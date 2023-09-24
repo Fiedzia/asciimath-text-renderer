@@ -1,0 +1,16 @@
+# Lines starting with # are treated as comments, empty lines are ignored
+# line starting with ## denote example name
+# each example is one line asciimath expression, followed by at least one line of text
+# with expected result
+
+## literal
+a
+a
+
+## division
+1/2
+ 1 
+───
+ 2 
+
+# end of file
