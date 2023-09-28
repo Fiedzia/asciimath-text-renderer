@@ -6,6 +6,14 @@ use crate::text_canvas::TextCanvas;
 pub trait Drawable: Debug {
     fn width(&self) -> usize;
     fn height(&self) -> usize;
+    /*where the horizontal middle of expression is
+     so that we know where to draw it
+     provided in relation to top of the expression
+     1     _
+     - + \/2   <- level
+     2
+    */
+    fn level(&self) -> usize;
     fn to_string(&self) -> String;
     fn to_canvas(&self) -> TextCanvas;
 }
@@ -16,7 +24,7 @@ pub trait Drawable: Debug {
 pub struct Literal {
     value: Vec<String>,
 }
-//hold single grapheme
+
 impl Literal {
     pub fn new(from_str: &str) -> Self {
         Literal {
@@ -41,6 +49,10 @@ impl Drawable for Literal {
             tc.set(idx, 0, s);
         }
         tc
+    }
+
+    fn level(&self) -> usize {
+        0
     }
 }
 
@@ -91,6 +103,10 @@ impl Drawable for Div {
 
         result
     }
+
+    fn level(&self) -> usize {
+        self.expr1.height()
+    }
 }
 
 //stack (stackrel) -> stack expr1 over expr2
@@ -139,6 +155,10 @@ impl Drawable for Stack {
         );
         result
     }
+
+    fn level(&self) -> usize {
+        self.expr1.height() - 1
+    }
 }
 
 //square root
@@ -186,6 +206,10 @@ impl Drawable for Sqrt {
         }
 
         result
+    }
+
+    fn level(&self) -> usize {
+        (self.expr.height() + 1) / 2
     }
 }
 
@@ -256,6 +280,10 @@ impl Drawable for Root {
 
         result
     }
+
+    fn level(&self) -> usize {
+        (self.arg1.height() + 1) / 2
+    }
 }
 
 //Expression holding a row of items
@@ -279,7 +307,12 @@ impl Drawable for Expr {
         if self.exprs.len() == 0 {
             0
         } else {
-            self.exprs.iter().map(|e| e.height()).max().unwrap()
+            let level = self.level();
+            self.exprs
+                .iter()
+                .map(|e| level + e.height() - level)
+                .max()
+                .unwrap()
         }
     }
 
@@ -290,13 +323,17 @@ impl Drawable for Expr {
     fn to_canvas(&self) -> TextCanvas {
         let mut result = TextCanvas::new(self.width(), self.height());
         let mut idx = 0;
-
+        let level = self.level();
         for expr in &self.exprs {
-            result.draw(&expr.to_canvas(), idx, 0);
+            result.draw(&expr.to_canvas(), idx, level - expr.level());
             idx += expr.width();
         }
 
         result
+    }
+
+    fn level(&self) -> usize {
+        self.exprs.iter().map(|e| e.level()).max().unwrap_or(0)
     }
 }
 
