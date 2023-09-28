@@ -10,7 +10,7 @@ Examples:
 ```
 
 > sqrt x
-```text
+```
   ▁
 ╲╱x
 ```

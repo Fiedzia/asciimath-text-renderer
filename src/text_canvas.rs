@@ -54,7 +54,7 @@ impl TextCanvas {
     }
 
     pub fn to_string(&self) -> String {
-        let mut result: String = String::with_capacity(self.data.iter().map(|s| s.len()).sum::<usize>() + (self.height-1));
+        let mut result: String = String::with_capacity(self.data.iter().map(|s| s.len()).sum::<usize>() + ( if self.height > 0 {self.height-1} else {0}));
 
         for y in 0..self.height {
             for x in 0..self.width {

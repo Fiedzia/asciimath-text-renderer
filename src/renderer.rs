@@ -1,8 +1,9 @@
+use std::fmt::Debug;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::text_canvas::TextCanvas;
 
-pub trait Drawable {
+pub trait Drawable: Debug {
 
     fn width(&self) -> usize;
     fn height(&self) -> usize;
@@ -39,21 +40,22 @@ impl Drawable for Literal {
 }
 
 
-pub struct Div<'a> {
-    expr1: &'a dyn Drawable,
-    expr2: &'a dyn Drawable,
+#[derive(Debug)]
+pub struct Div {
+    expr1: Box<dyn Drawable>,
+    expr2: Box<dyn Drawable>,
 }
 
-impl <'a>Div<'a> {
+impl Div {
 
-    pub fn new(expr1: &'a dyn Drawable, expr2: &'a dyn Drawable) -> Self {
+    pub fn new(expr1: Box<dyn Drawable>, expr2: Box<dyn Drawable>) -> Self {
         Div {
             expr1, expr2
         }
     }
 }
 
-impl <'a>Drawable for Div<'a> {
+impl Drawable for Div {
 
     fn width(&self) -> usize {
         std::cmp::max(self.expr1.width(), self.expr2.width()) + 2
@@ -86,20 +88,21 @@ impl <'a>Drawable for Div<'a> {
 }
 
 //square root
-pub struct Sqrt<'a> {
-    expr: &'a dyn Drawable,
+#[derive(Debug)]
+pub struct Sqrt {
+    expr: Box<dyn Drawable>,
 }
 
-impl <'a>Sqrt<'a> {
+impl Sqrt {
 
-    pub fn new(expr: &'a dyn Drawable) -> Self {
+    pub fn new(expr: Box<dyn Drawable>) -> Self {
         Sqrt {
             expr
         }
     }
 }
 
-impl <'a>Drawable for Sqrt<'a> {
+impl Drawable for Sqrt {
 
     fn width(&self) -> usize {
         self.expr.width() + self.expr.height() + ((self.expr.height() as f64 * 0.5 + 0.5) as usize)
@@ -119,7 +122,6 @@ impl <'a>Drawable for Sqrt<'a> {
 
         let mut idx = 0;
         let m = (self.expr.height() as f64 * 0.5 + 0.5) as usize;
-        println!("m is {}", m);
         for (pos, i) in (0..m).rev().enumerate() {
             result.set(pos, self.height()-i-1, "╲");
             idx += 1;
@@ -137,12 +139,58 @@ impl <'a>Drawable for Sqrt<'a> {
 
 }
 
+//Expression holding a row of items
+#[derive(Debug)]
+pub struct Expr {
+    pub exprs: Vec<Box<dyn Drawable>>,
+}
+
+impl Expr {
+
+    pub fn new(exprs: Vec<Box<dyn Drawable>>) -> Self {
+        Expr {
+            exprs
+        }
+    }
+}
+
+impl Drawable for Expr {
+
+    fn width(&self) -> usize {
+        self.exprs.iter().map(|e| e.width()).sum()
+    }
+
+    fn height(&self) -> usize {
+        if self.exprs.len() == 0 {
+            0
+        } else {
+            self.exprs.iter().map(|e| e.height()).max().unwrap()
+        }
+    }
+  
+    fn to_string(&self) -> String { self.to_canvas().to_string() }
+
+    fn to_canvas(&self) -> TextCanvas {
+
+        let mut result = TextCanvas::new(self.width(), self.height());
+        let mut idx = 0;
+
+        for expr in &self.exprs {
+            result.draw(&expr.to_canvas(), idx, 0);
+            idx += expr.width();
+        }
+
+        result
+    }
+
+}
 
 
 #[cfg(test)]
 mod test {
 
     use std::fs::read_to_string;
+    use crate::asciimath;
     use super::*;
 
     #[test]
@@ -157,7 +205,7 @@ mod test {
     fn test_div() {
         let l1 = Literal::new("1");
         let l2 = Literal::new("2");
-        let div = Div::new(&l1, &l2);
+        let div = Div::new(Box::new(l1), Box::new(l2));
 
         assert_eq!(div.width(), 3);
         assert_eq!(div.height(), 3);
@@ -167,7 +215,7 @@ mod test {
     #[test]
     fn test_sqrt() {
         let l1 = Literal::new("1");
-        let sqrt = Sqrt::new(&l1);
+        let sqrt = Sqrt::new(Box::new(l1.clone()));
 
         assert_eq!(sqrt.width(), 3);
         assert_eq!(sqrt.height(), 2);
@@ -175,8 +223,8 @@ mod test {
 
 
         let l2 = Literal::new("2");
-        let div = Div::new(&l1, &l2);
-        let sqrt = Sqrt::new(&div);
+        let div = Div::new(Box::new(l1.clone()), Box::new(l2.clone()));
+        let sqrt = Sqrt::new(Box::new(div));
         assert_eq!(sqrt.width(), 8);
         assert_eq!(sqrt.height(), 4);
         assert_eq!(&sqrt.to_string(), "     ▁▁▁\n    ╱ 1 \n╲  ╱ ───\n ╲╱   2 ");
@@ -184,27 +232,42 @@ mod test {
     }
 
     #[test]
+    fn test_expression() {
+        let expr = Expr::new(vec![]);
+        assert_eq!(&expr.to_string(), "");
+        let l1 = Literal::new("a");
+        let expr = Expr::new(vec![Box::new(l1.clone())]);
+        assert_eq!(&expr.to_string(), "a");
+        let l2 = Literal::new("b");
+        let expr = Expr::new(vec![Box::new(l1), Box::new(l2)]);
+        assert_eq!(&expr.to_string(), "ab");
+    }
+
+    #[test]
     fn test_examples_from_test_file() {
-        fn verify(example_name: &str, expected: &Vec<String>) {
-            //TODO: parse and compare
-            //println!("V:: {} for {:?}", example_name, expected);
+        fn verify(example_name: &str, asciimath_str: &str, expected: &Vec<String>) {
+            assert_eq!(
+                asciimath::render(asciimath_str),
+                expected.join("\n")
+            );
         }
         let mut mode = "";
         let mut example_name = "";
+        let mut example_asciimath = "";
         let mut example: Vec<String> = vec![];
         for line in read_to_string("tests.txt").unwrap().lines() 
         {
             if line.starts_with("##") {
                 if mode == "example" {
-                    verify(&example_name, &example);
+                    verify(&example_name, &example_asciimath, &example);
                     example_name = "";
                     example.clear();
                 }
                 example_name = line[2..].trim();
-                mode = "example";
+                mode = "example_asciimath";
             } else if line.starts_with("#") || line == "" {
                 if mode == "example" {
-                    verify(&example_name, &example);
+                    verify(&example_name, &example_asciimath, &example);
                     example_name = "";
                     example.clear();
                 }
@@ -212,6 +275,9 @@ mod test {
             } else {
                 if mode == "example" {
                     example.push(line.to_string());
+                } else if mode == "example_asciimath" {
+                    example_asciimath = line;
+                    mode = "example"
                 } else {
                     panic!("invalid test file");
                 }

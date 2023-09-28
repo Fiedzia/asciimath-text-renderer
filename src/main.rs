@@ -1,6 +1,11 @@
+pub mod asciimath;
 pub mod renderer;
-mod text_canvas;
+pub mod text_canvas;
+
 
 fn main() {
-    println!("Hello, world!");
+    let arg =std::env::args().last().unwrap().to_string();
+    let rendered = asciimath::render(&arg);
+    println!("{}", rendered);
+
 }
