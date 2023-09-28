@@ -1,4 +1,3 @@
-
 //TextCanvas is two-dimenstional array
 //For example to represent 1/2 * 3/4, we would think of it as:
 //1 3
@@ -17,15 +16,13 @@ pub struct TextCanvas {
     //TODO: this could be replaced with reference to cached set of strings
     data: Vec<String>,
     width: usize,
-    height: usize
+    height: usize,
 }
 
 impl TextCanvas {
-
     pub fn new(width: usize, height: usize) -> Self {
-        
         let mut data = Vec::with_capacity(width * height);
-        for _ in 0..width*height {
+        for _ in 0..width * height {
             data.push(" ".to_string())
         }
         TextCanvas {
@@ -50,26 +47,25 @@ impl TextCanvas {
                 self.set(at_x + x, at_y + y, other_text_canvas.get(x, y))
             }
         }
-
     }
 
     pub fn to_string(&self) -> String {
-        let mut result: String = String::with_capacity(self.data.iter().map(|s| s.len()).sum::<usize>() + ( if self.height > 0 {self.height-1} else {0}));
+        let mut result: String = String::with_capacity(
+            self.data.iter().map(|s| s.len()).sum::<usize>()
+                + (if self.height > 0 { self.height - 1 } else { 0 }),
+        );
 
         for y in 0..self.height {
             for x in 0..self.width {
                 result.push_str(self.get(x, y));
             }
-            if y < self.height-1 {
+            if y < self.height - 1 {
                 result.push('\n');
             }
         }
         result
-
     }
-
 }
-
 
 #[cfg(test)]
 mod test {
@@ -90,7 +86,7 @@ mod test {
         assert_eq!(tc.to_string(), " \n ");
     }
 
-   #[test]
+    #[test]
     fn test_text_canvas_draw() {
         let mut tc = TextCanvas::new(2, 2);
         tc.set(0, 0, "a");
@@ -100,12 +96,7 @@ mod test {
         assert_eq!(tc.to_string(), "ab\ncd");
         let mut bigger_tc = TextCanvas::new(4, 4);
         bigger_tc.draw(&tc, 0, 0);
-        const expected: &str = concat!( 
-            "ab  \n",
-            "cd  \n",
-            "    \n",
-            "    "
-        );
+        const expected: &str = concat!("ab  \n", "cd  \n", "    \n", "    ");
         assert_eq!(bigger_tc.to_string(), expected);
     }
 }
