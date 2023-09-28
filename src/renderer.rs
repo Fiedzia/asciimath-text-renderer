@@ -93,6 +93,54 @@ impl Drawable for Div {
     }
 }
 
+//stack (stackrel) -> stack expr1 over expr2
+//stackrel a b =>  a
+//                 b
+#[derive(Debug)]
+pub struct Stack {
+    expr1: Box<dyn Drawable>,
+    expr2: Box<dyn Drawable>,
+}
+
+impl Stack {
+    pub fn new(expr1: Box<dyn Drawable>, expr2: Box<dyn Drawable>) -> Self {
+        Stack { expr1, expr2 }
+    }
+}
+
+impl Drawable for Stack {
+    fn width(&self) -> usize {
+        std::cmp::max(self.expr1.width(), self.expr2.width())
+    }
+
+    fn height(&self) -> usize {
+        self.expr1.height() + self.expr2.height()
+    }
+
+    fn to_string(&self) -> String {
+        self.to_canvas().to_string()
+    }
+
+    fn to_canvas(&self) -> TextCanvas {
+        let mut result = TextCanvas::new(self.width(), self.height());
+
+        let expr1_tc = self.expr1.to_canvas();
+        let expr2_tc = self.expr2.to_canvas();
+
+        result.draw(
+            &expr1_tc,
+            ((self.width() - self.expr1.width()) as f64 / 2.0f64) as usize,
+            0,
+        );
+        result.draw(
+            &expr2_tc,
+            ((self.width() - self.expr1.width()) as f64 / 2.0f64) as usize,
+            self.expr1.height(),
+        );
+        result
+    }
+}
+
 //square root
 #[derive(Debug)]
 pub struct Sqrt {
@@ -136,6 +184,75 @@ impl Drawable for Sqrt {
         for i in idx..(idx + self.expr.width()) {
             result.set(i, 0, "▁")
         }
+
+        result
+    }
+}
+
+//root
+#[derive(Debug)]
+pub struct Root {
+    arg1: Box<dyn Drawable>,
+    arg2: Box<dyn Drawable>,
+}
+
+impl Root {
+    pub fn new(arg1: Box<dyn Drawable>, arg2: Box<dyn Drawable>) -> Self {
+        Root { arg1, arg2 }
+    }
+}
+
+//size of character of V part of root
+//to wrap half of first argument
+fn v_size(w: usize, h: usize) -> (usize, usize) {
+    ((h + 1) / 2 + (h + 1) / 2, (w + 1) / 2 + (h + 1) / 2)
+}
+
+impl Drawable for Root {
+    fn width(&self) -> usize {
+        //self.arg1.width() + self.expr.height() + ((self.expr.height() as f64 * 0.5 + 0.5) as usize)
+        ((self.arg1.width() + 1) / 2) * 2 + self.arg1.height() + (self.arg1.height() + 1) / 2 - 1
+            + self.arg2.width()
+            - 1
+        //TODO: account for arg2 wuth height larger than arg1
+        //self.arg1.width() + self.arg2.width()
+    }
+
+    fn height(&self) -> usize {
+        self.arg1.height() + (self.arg1.width() + 1) / 2
+    }
+
+    fn to_string(&self) -> String {
+        self.to_canvas().to_string()
+    }
+
+    fn to_canvas(&self) -> TextCanvas {
+        let mut result = TextCanvas::new(self.width(), self.height());
+
+        let arg1_tc = self.arg1.to_canvas();
+        let arg2_tc = self.arg2.to_canvas();
+
+        result.draw(&arg1_tc, arg1_tc.width % 2, 0);
+
+        let mut x_idx = 0;
+        let box_h_2 = (self.arg1.height() + 1) / 2;
+        let box_w_2 = (self.arg1.width() + 1) / 2;
+        for i in (0..box_w_2) {
+            result.set(i, arg1_tc.height + i, "╲");
+            x_idx += 1;
+        }
+        for i in 0..box_w_2 {
+            result.set(x_idx, self.height() - i - 1, "╱");
+            x_idx += 1;
+        }
+        let arg2_pos = x_idx;
+
+        for _ in 0..arg2_tc.width {
+            result.set(x_idx, box_h_2 - 1, "▁");
+            x_idx += 1;
+        }
+
+        result.draw(&arg2_tc, arg2_pos, box_h_2);
 
         result
     }
@@ -210,6 +327,17 @@ mod test {
     }
 
     #[test]
+    fn test_stack() {
+        let l1 = Literal::new("1");
+        let l2 = Literal::new("2");
+        let stack = Stack::new(Box::new(l1), Box::new(l2));
+
+        assert_eq!(stack.width(), 1);
+        assert_eq!(stack.height(), 2);
+        assert_eq!(&stack.to_string(), "1\n2");
+    }
+
+    #[test]
     fn test_sqrt() {
         let l1 = Literal::new("1");
         let sqrt = Sqrt::new(Box::new(l1.clone()));
@@ -240,8 +368,13 @@ mod test {
 
     #[test]
     fn test_examples_from_test_file() {
-        fn verify(example_name: &str, asciimath_str: &str, expected: &Vec<String>) {
-            assert_eq!(asciimath::render(asciimath_str), expected.join("\n"));
+        fn verify(example_name: &str, asciimath_str: &str, expected: &str) {
+            let rendered = asciimath::render(asciimath_str);
+            assert_eq!(
+                rendered, expected,
+                "testing example {}: {}\nexpected output:\n{}\n\nrendered output:\n{}\n\n",
+                example_name, asciimath_str, expected, rendered
+            );
         }
         let mut mode = "";
         let mut example_name = "";
@@ -250,7 +383,7 @@ mod test {
         for line in read_to_string("tests.txt").unwrap().lines() {
             if line.starts_with("##") {
                 if mode == "example" {
-                    verify(&example_name, &example_asciimath, &example);
+                    verify(&example_name, &example_asciimath, &example.join("\n"));
                     example_name = "";
                     example.clear();
                 }
@@ -258,7 +391,7 @@ mod test {
                 mode = "example_asciimath";
             } else if line.starts_with("#") || line == "" {
                 if mode == "example" {
-                    verify(&example_name, &example_asciimath, &example);
+                    verify(&example_name, &example_asciimath, &example.join("\n"));
                     example_name = "";
                     example.clear();
                 }

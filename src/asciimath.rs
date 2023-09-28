@@ -1,7 +1,7 @@
 use phf::phf_map;
 use std::collections::HashMap;
 
-use crate::renderer::{Div, Drawable, Expr, Literal, Sqrt};
+use crate::renderer::{Div, Drawable, Expr, Literal, Root, Sqrt, Stack};
 use asciimath_parser;
 
 static SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
@@ -150,6 +150,48 @@ static SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
     "lArr" => "⇐",
     "hArr" => "⇔",
 
+    //miscellaneous symbols
+    "int" => "∫",
+    "dx" => "{:d x:}",
+    "dy" => "{:d y:}",
+    "dz" => "{:d z:}",
+    "dt" => "{:d t:}",
+    "oint" => "∮",
+    "del" => "∂",
+    "grad" => "∇",
+    "+-" => "±",
+    "-+" => "∓",
+    "O/" => "∅",
+    "oo" => "∞",
+    "aleph" => "ℵ",
+    "..." => "...",
+    ":." => "∴",
+    ":'" => "∵",
+    "/_" => "∠",
+    "/_\\" => "△",
+    "'" => "′",
+    "tilde" => "~",
+    "\\ " => " ",
+    "frown" => "⌢",
+    "quad" => "  ",
+    "qquad" => "    ",
+    "cdots" => "⋯",
+    "vdots" => "⋮",
+    "ddots" => "⋱",
+    "diamond" => "⋄",
+    "square" => "□",
+    "|__" => "⌊",
+    "__|" => "⌋",
+    "|~" => "⌈",
+    "~|" => "⌉",
+    "CC" => "ℂ",
+    "NN" => "ℕ",
+    "QQ" => "ℚ",
+    "RR" => "ℝ",
+    "ZZ" => "ℤ",
+    "f" => "f",
+    "g" => "g",
+
 };
 
 //bunch of visitors to map axiimath_parser hierarchy into tree of renderer structs
@@ -168,10 +210,27 @@ pub fn visit_simple(simple: &asciimath_parser::tree::Simple) -> Option<Box<dyn D
         ))),
         asciimath_parser::tree::Simple::Unary(unary) => match unary.op {
             "sqrt" => Some(Box::new(Sqrt::new(visit_simple(unary.arg()).unwrap()))),
-            _ => unimplemented!(),
+            _ => unimplemented!(), //TODO: implementation and test for all unary functions
         },
         asciimath_parser::tree::Simple::Func(func) => None,
-        asciimath_parser::tree::Simple::Binary(binary) => None,
+        asciimath_parser::tree::Simple::Binary(binary) => {
+            match binary.op {
+                "frac" => Some(Box::new(Div::new(
+                    visit_simple(&binary.first()).unwrap(),
+                    visit_simple(&binary.second()).unwrap(),
+                ))),
+                "stackrel" => Some(Box::new(Stack::new(
+                    visit_simple(&binary.first()).unwrap(),
+                    visit_simple(&binary.second()).unwrap(),
+                ))),
+                "root" => Some(Box::new(Root::new(
+                    visit_simple(&binary.first()).unwrap(),
+                    visit_simple(&binary.second()).unwrap(),
+                ))),
+
+                _ => unimplemented!(), //TODO: implementation and test for all binary functions
+            }
+        }
         asciimath_parser::tree::Simple::Group(group) => None,
         asciimath_parser::tree::Simple::Matrix(matrix) => None,
     }
@@ -234,10 +293,10 @@ pub fn visit_expr(expr: &asciimath_parser::tree::Expression) -> Option<Box<dyn D
 pub fn render(expr: &str) -> String {
     //oddly, it doesn't return result, always parsing as something
     let parsed = asciimath_parser::parse(&expr);
+    println!("{:#?}", parsed);
     let mut drawables: Vec<Box<dyn Drawable>> = vec![];
     let expr_opt = visit_expr(&parsed);
 
-    println!("{:#?}", parsed);
     if let Some(expr) = expr_opt {
         expr.to_string()
     } else {

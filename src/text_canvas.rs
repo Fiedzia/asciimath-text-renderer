@@ -15,8 +15,8 @@ pub struct TextCanvas {
     //(which is stored as a String to keep it simple)
     //TODO: this could be replaced with reference to cached set of strings
     data: Vec<String>,
-    width: usize,
-    height: usize,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl TextCanvas {

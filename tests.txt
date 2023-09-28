@@ -16,5 +16,8 @@ a
 sqrt x
   ▁
 ╲╱x
-
+## root
+root a b
+ a▁
+╲╱b
 # end of file
