@@ -1,6 +1,6 @@
 use phf::phf_map;
 
-use crate::renderer::{Div, Drawable, Expr, Literal, Root, Sqrt, Stack};
+use crate::renderer::{Div, Drawable, Expr, Literal, Root, ScriptExpr, Sqrt, Stack};
 use asciimath_parser;
 
 static SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
@@ -240,7 +240,26 @@ pub fn visit_simple_script(
 ) -> Option<Box<dyn Drawable>> {
     //TODO: handle script
     if let Some(expr) = visit_simple(&simple_script.simple) {
-        Some(expr)
+        match &simple_script.script {
+            asciimath_parser::tree::Script::None => Some(expr),
+            asciimath_parser::tree::Script::Sub(simple) => {
+                let sub_expr = visit_simple(&simple).unwrap();
+                Some(Box::new(ScriptExpr::new(expr, Some(sub_expr), None)))
+            }
+            asciimath_parser::tree::Script::Super(simple) => {
+                let sup_expr = visit_simple(&simple).unwrap();
+                Some(Box::new(ScriptExpr::new(expr, None, Some(sup_expr))))
+            }
+            asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
+                let sub_expr = visit_simple(&simple1).unwrap();
+                let sup_expr = visit_simple(&simple2).unwrap();
+                Some(Box::new(ScriptExpr::new(
+                    expr,
+                    Some(sub_expr),
+                    Some(sup_expr),
+                )))
+            }
+        }
     } else {
         //visit_script(&simple_script.script, drawables);
         None

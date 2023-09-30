@@ -161,6 +161,97 @@ impl Drawable for Stack {
     }
 }
 
+//script -> render expression with sub or super script (or both)
+//for example    3   x          2
+//              2     0        x
+//                              1
+//
+#[derive(Debug)]
+pub struct ScriptExpr {
+    expr: Box<dyn Drawable>,
+    sup_expr: Option<Box<dyn Drawable>>,
+    sub_expr: Option<Box<dyn Drawable>>,
+}
+
+impl ScriptExpr {
+    pub fn new(
+        expr: Box<dyn Drawable>,
+        sub_expr: Option<Box<dyn Drawable>>,
+        sup_expr: Option<Box<dyn Drawable>>,
+    ) -> Self {
+        ScriptExpr {
+            expr,
+            sup_expr,
+            sub_expr,
+        }
+    }
+}
+
+impl Drawable for ScriptExpr {
+    fn width(&self) -> usize {
+        self.expr.width()
+            + match (&self.sup_expr, &self.sub_expr) {
+                (Some(e), None) => e.width(),
+                (None, Some(e)) => e.width(),
+                (Some(e1), Some(e2)) => std::cmp::max(e1.width(), e2.width()),
+                (None, None) => 0,
+            }
+    }
+
+    fn height(&self) -> usize {
+        self.expr.height()
+            + match (&self.sup_expr, &self.sub_expr) {
+                (Some(e), None) => e.height(),
+                (None, Some(e)) => e.height(),
+                (Some(e1), Some(e2)) => e1.height() + e2.height(),
+                (None, None) => 0,
+            }
+    }
+
+    fn to_string(&self) -> String {
+        self.to_canvas().to_string()
+    }
+
+    fn to_canvas(&self) -> TextCanvas {
+        let mut result = TextCanvas::new(self.width(), self.height());
+        let expr_tc = self.expr.to_canvas();
+        match (&self.sup_expr, &self.sub_expr) {
+            (Some(e), None) => {
+                let tc = e.to_canvas();
+                result.draw(&tc, self.expr.width(), 0);
+                result.draw(&expr_tc, 0, e.height());
+                result
+            }
+            (None, Some(e)) => {
+                let tc = e.to_canvas();
+                result.draw(&expr_tc, 0, 0);
+                result.draw(&tc, self.expr.width(), self.expr.height());
+                result
+            }
+            (Some(e1), Some(e2)) => {
+                let tc1 = e1.to_canvas();
+                let tc2 = e2.to_canvas();
+                result.draw(&tc1, self.expr.width(), 0);
+                result.draw(&expr_tc, 0, e1.height());
+                result.draw(&tc2, self.expr.width(), e1.height() + self.expr.height());
+                result
+            }
+            (None, None) => {
+                result.draw(&expr_tc, 0, 0);
+                result
+            }
+        }
+    }
+
+    fn level(&self) -> usize {
+        match (&self.sub_expr, &self.sup_expr) {
+            (Some(e), Some(_)) | (Some(e), None) => e.height() + (self.expr.height() + 1) / 2,
+            (None, Some(e)) => (self.expr.height() + 1) / 2,
+            (None, None) => 0,
+        }
+    }
+}
+
 //square root
 #[derive(Debug)]
 pub struct Sqrt {
@@ -261,7 +352,7 @@ impl Drawable for Root {
         let mut x_idx = 0;
         let box_h_2 = (self.arg1.height() + 1) / 2;
         let box_w_2 = (self.arg1.width() + 1) / 2;
-        for i in (0..box_w_2) {
+        for i in 0..box_w_2 {
             result.set(i, arg1_tc.height + i, "╲");
             x_idx += 1;
         }

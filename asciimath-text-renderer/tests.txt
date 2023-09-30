@@ -20,4 +20,17 @@ sqrt x
 root a b
  a▁
 ╲╱b
+## superscript
+2^x
+ x
+2 
+## subscript
+2_x
+2 
+ x
+##sub- and super-script
+2_x^y
+ y
+2 
+ x
 # end of file
