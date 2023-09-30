@@ -1,5 +1,4 @@
 use phf::phf_map;
-use std::collections::HashMap;
 
 use crate::renderer::{Div, Drawable, Expr, Literal, Root, Sqrt, Stack};
 use asciimath_parser;
