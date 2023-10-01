@@ -3,6 +3,19 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::text_canvas::TextCanvas;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum BracketType {
+    None,
+    LeftRound,   //"("
+    RightRound,  //")"
+    LeftSquare,  //"["
+    RightSquare, //"]"
+    LeftCurly,   //"{"
+    RightCurly,  //"}"
+    LeftAngled,  //"<"
+    RightAngled, //">"
+}
+
 pub trait Drawable: Debug {
     fn width(&self) -> usize;
     fn height(&self) -> usize;
@@ -94,7 +107,7 @@ impl Drawable for Div {
         );
         result.draw(
             &expr2_tc,
-            ((self.width() - self.expr1.width()) as f64 / 2.0f64) as usize,
+            ((self.width() - self.expr2.width()) as f64 / 2.0f64) as usize,
             self.expr1.height() + 1,
         );
         for idx in 0..self.width() {
@@ -158,6 +171,337 @@ impl Drawable for Stack {
 
     fn level(&self) -> usize {
         self.expr1.height() - 1
+    }
+}
+
+pub fn bracket_width(bracket_type: &BracketType, expr_height: usize) -> usize {
+    if expr_height == 0 {
+        if *bracket_type == BracketType::None {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+    match bracket_type {
+        BracketType::None => 0,
+        BracketType::LeftRound | BracketType::RightRound => 1,
+        BracketType::LeftSquare | BracketType::RightSquare => 1,
+        BracketType::LeftCurly | BracketType::RightCurly => 1,
+        BracketType::LeftAngled | BracketType::RightAngled => (expr_height + 1) / 2,
+    }
+}
+
+pub fn draw_long_bracket(
+    text_canvas: &mut TextCanvas,
+    expr_height: usize,
+    at_x: usize,
+    at_y: usize,
+    top: &str,
+    extension: &str,
+    bottom: &str,
+) {
+    //expr_height >= 2
+    let mut y = at_y;
+    text_canvas.set(at_x, at_y, top);
+    y += 1;
+    for _ in 0..expr_height - 2 {
+        text_canvas.set(at_x, y, extension);
+        y += 1;
+    }
+    text_canvas.set(at_x, y, bottom);
+}
+
+pub fn draw_long_curly_bracket(
+    text_canvas: &mut TextCanvas,
+    expr_height: usize,
+    at_x: usize,
+    at_y: usize,
+    top: &str,
+    extension: &str,
+    middle: &str,
+    bottom: &str,
+) {
+    //expr_height >= 3
+    let mut y = at_y;
+    text_canvas.set(at_x, at_y, top);
+    y += 1;
+    for _ in 0..expr_height - 2 {
+        if y == expr_height / 2 {
+            text_canvas.set(at_x, y, middle);
+        } else {
+            text_canvas.set(at_x, y, extension);
+        }
+        y += 1;
+    }
+    text_canvas.set(at_x, y, bottom);
+}
+
+//Two different cases:
+//expr_height % 2 == 0:
+// ╲    upper
+//  ╲   upper
+//  ╱   lower
+// ╱    lower
+//
+//expr_height % 2 == 1:
+// ╲    upper
+//  ╲   upper
+//  🮥   middle
+//  ╱   lower
+// ╱    lower
+
+pub fn draw_long_angled_bracket_left(
+    text_canvas: &mut TextCanvas,
+    expr_height: usize,
+    at_x: usize,
+    at_y: usize,
+    upper: &str,
+    middle: &str,
+    lower: &str,
+) {
+    //expr_height >= 2
+    let mut y = at_y;
+    if expr_height % 2 == 0 {
+        for idx in (0..(expr_height / 2)).rev() {
+            text_canvas.set(at_x + idx, y, upper);
+            y += 1;
+        }
+        for idx in 0..(expr_height / 2) {
+            text_canvas.set(at_x + idx, y, lower);
+            y += 1;
+        }
+    } else {
+        for idx in (0..(expr_height / 2)).rev() {
+            text_canvas.set(at_x + idx + 1, y, upper);
+            y += 1;
+        }
+
+        text_canvas.set(at_x, y, middle);
+        y += 1;
+        for idx in 0..((expr_height) / 2) {
+            text_canvas.set(at_x + idx + 1, y, lower);
+            y += 1;
+        }
+    }
+}
+
+pub fn draw_long_angled_bracket_right(
+    text_canvas: &mut TextCanvas,
+    expr_height: usize,
+    at_x: usize,
+    at_y: usize,
+    upper: &str,
+    middle: &str,
+    lower: &str,
+) {
+    //expr_height >= 2
+    let mut y = at_y;
+    if expr_height % 2 == 0 {
+        for idx in 0..(expr_height / 2) {
+            text_canvas.set(at_x + idx, y, upper);
+            y += 1;
+        }
+        for idx in (0..(expr_height / 2)).rev() {
+            text_canvas.set(at_x + idx, y, lower);
+            y += 1;
+        }
+    } else {
+        for idx in 0..(expr_height / 2) {
+            text_canvas.set(at_x + idx, y, upper);
+            y += 1;
+        }
+
+        text_canvas.set(at_x + y - 1, y, middle);
+        y += 1;
+        for idx in (0..((expr_height) / 2)).rev() {
+            text_canvas.set(at_x + idx, y, lower);
+            y += 1;
+        }
+    }
+}
+
+pub fn draw_bracket(
+    text_canvas: &mut TextCanvas,
+    bracket_type: &BracketType,
+    expr_height: usize,
+    at_x: usize,
+    at_y: usize,
+) {
+    match bracket_type {
+        BracketType::None => {}
+        BracketType::LeftRound if expr_height <= 1 => text_canvas.set(at_x, at_y, "("),
+        BracketType::LeftRound => {
+            draw_long_bracket(text_canvas, expr_height, at_x, at_y, "⎛", "⎜", "⎝");
+        }
+        BracketType::RightRound if expr_height <= 1 => text_canvas.set(at_x, at_y, ")"),
+        BracketType::RightRound => {
+            draw_long_bracket(text_canvas, expr_height, at_x, at_y, "⎞", "⎜", "⎠");
+        }
+        BracketType::LeftSquare if expr_height <= 1 => text_canvas.set(at_x, at_y, "["),
+        BracketType::LeftSquare => {
+            draw_long_bracket(text_canvas, expr_height, at_x, at_y, "⎡", "⎥", "⎣");
+        }
+        BracketType::RightSquare if expr_height <= 1 => text_canvas.set(at_x, at_y, "]"),
+        BracketType::RightSquare => {
+            draw_long_bracket(text_canvas, expr_height, at_x, at_y, "⎤", "⎥", "⎦");
+        }
+        BracketType::LeftCurly if expr_height <= 1 => text_canvas.set(at_x, at_y, "{"),
+        BracketType::LeftCurly if expr_height == 2 => {
+            text_canvas.set(at_x, at_y, "⎰");
+            text_canvas.set(at_x, at_y + 1, "⎱");
+        }
+        BracketType::LeftCurly => {
+            draw_long_curly_bracket(text_canvas, expr_height, at_x, at_y, "⎧", "⎪", "⎨", "⎩");
+        }
+        BracketType::RightCurly if expr_height <= 1 => text_canvas.set(at_x, at_y, "}"),
+        BracketType::RightCurly if expr_height == 2 => {
+            text_canvas.set(at_x, at_y, "⎱");
+            text_canvas.set(at_x, at_y + 1, "⎰");
+        }
+        BracketType::RightCurly => {
+            draw_long_curly_bracket(text_canvas, expr_height, at_x, at_y, "⎫", "⎪", "⎬", "⎭");
+        }
+        BracketType::LeftAngled if expr_height <= 1 => text_canvas.set(at_x, at_y, "⟨"),
+
+        BracketType::LeftAngled if expr_height == 2 => {
+            text_canvas.set(at_x, at_y, "╱");
+            text_canvas.set(at_x, at_y + 1, "╲");
+        }
+        BracketType::LeftAngled => {
+            draw_long_angled_bracket_left(text_canvas, expr_height, at_x, at_y, "╱", "🮤", "╲");
+        }
+        BracketType::RightAngled if expr_height <= 1 => text_canvas.set(at_x, at_y, "⟩"),
+        BracketType::RightAngled if expr_height == 2 => {
+            text_canvas.set(at_x, at_y, "╲");
+            text_canvas.set(at_x, at_y + 1, "╱");
+        }
+        BracketType::RightAngled => {
+            draw_long_angled_bracket_right(text_canvas, expr_height, at_x, at_y, "╲", "🮥", "╱");
+        }
+    }
+}
+
+//group -> render expression within brackets
+//for example   (x)
+#[derive(Debug)]
+pub struct Group {
+    left_bracket: BracketType,
+    expr: Option<Box<dyn Drawable>>,
+    right_bracket: BracketType,
+}
+
+impl Group {
+    pub fn new(
+        left_bracket: BracketType,
+        expr: Option<Box<dyn Drawable>>,
+        right_bracket: BracketType,
+    ) -> Self {
+        Group {
+            left_bracket,
+            expr,
+            right_bracket,
+        }
+    }
+}
+
+impl Drawable for Group {
+    fn width(&self) -> usize {
+        bracket_width(
+            &self.left_bracket,
+            if let Some(expr) = &self.expr {
+                expr.height()
+            } else {
+                0
+            },
+        ) + if let Some(expr) = &self.expr {
+            expr.width()
+        } else {
+            0
+        } + bracket_width(
+            &self.right_bracket,
+            if let Some(expr) = &self.expr {
+                expr.height()
+            } else {
+                0
+            },
+        )
+    }
+
+    fn height(&self) -> usize {
+        if let Some(expr) = &self.expr {
+            expr.height()
+        } else {
+            1
+        }
+    }
+
+    fn to_string(&self) -> String {
+        self.to_canvas().to_string()
+    }
+
+    fn to_canvas(&self) -> TextCanvas {
+        let mut result = TextCanvas::new(self.width(), self.height());
+        let lbw = bracket_width(
+            &self.left_bracket,
+            if let Some(expr) = &self.expr {
+                expr.height()
+            } else {
+                0
+            },
+        );
+        let rbw = bracket_width(
+            &self.right_bracket,
+            if let Some(expr) = &self.expr {
+                expr.height()
+            } else {
+                0
+            },
+        );
+        let expr_width = if let Some(expr) = &self.expr {
+            expr.width()
+        } else {
+            0
+        };
+        if lbw > 0 {
+            draw_bracket(
+                &mut result,
+                &self.left_bracket,
+                if let Some(expr) = &self.expr {
+                    expr.height()
+                } else {
+                    0
+                },
+                0,
+                0,
+            );
+        }
+        if let Some(expr) = &self.expr {
+            let expr_tc = expr.to_canvas();
+            result.draw(&expr_tc, lbw, 0);
+        }
+        if rbw > 0 {
+            draw_bracket(
+                &mut result,
+                &self.right_bracket,
+                if let Some(expr) = &self.expr {
+                    expr.height()
+                } else {
+                    0
+                },
+                lbw + expr_width,
+                0,
+            );
+        }
+        result
+    }
+
+    fn level(&self) -> usize {
+        if let Some(expr) = &self.expr {
+            //expr.level()
+            expr.height() / 2
+        } else {
+            0
+        }
     }
 }
 
@@ -246,7 +590,7 @@ impl Drawable for ScriptExpr {
     fn level(&self) -> usize {
         match (&self.sub_expr, &self.sup_expr) {
             (Some(e), Some(_)) | (Some(e), None) => e.height() + (self.expr.height() + 1) / 2,
-            (None, Some(e)) => (self.expr.height() + 1) / 2,
+            (None, Some(_)) => (self.expr.height() + 1) / 2,
             (None, None) => 0,
         }
     }
@@ -315,12 +659,6 @@ impl Root {
     pub fn new(arg1: Box<dyn Drawable>, arg2: Box<dyn Drawable>) -> Self {
         Root { arg1, arg2 }
     }
-}
-
-//size of character of V part of root
-//to wrap half of first argument
-fn v_size(w: usize, h: usize) -> (usize, usize) {
-    ((h + 1) / 2 + (h + 1) / 2, (w + 1) / 2 + (h + 1) / 2)
 }
 
 impl Drawable for Root {

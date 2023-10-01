@@ -1,6 +1,8 @@
 use phf::phf_map;
 
-use crate::renderer::{Div, Drawable, Expr, Literal, Root, ScriptExpr, Sqrt, Stack};
+use crate::renderer::{
+    BracketType, Div, Drawable, Expr, Group, Literal, Root, ScriptExpr, Sqrt, Stack,
+};
 use asciimath_parser;
 
 static SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
@@ -193,8 +195,27 @@ static SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
 
 };
 
+pub fn bracket_type(bracket: &str) -> BracketType {
+    match bracket {
+        "(" => BracketType::LeftRound,
+        ")" => BracketType::RightRound,
+        "[" => BracketType::LeftSquare,
+        "]" => BracketType::RightSquare,
+        "{" => BracketType::LeftCurly,
+        "}" => BracketType::RightCurly,
+        "<<" | "(:" => BracketType::LeftAngled,
+        ">>" | ":)" => BracketType::RightAngled,
+        "{:" => BracketType::None,
+        ":}" => BracketType::None,
+        _ => BracketType::None, //TODO: panic?
+    }
+}
+
 //bunch of visitors to map axiimath_parser hierarchy into tree of renderer structs
-pub fn visit_simple(simple: &asciimath_parser::tree::Simple) -> Option<Box<dyn Drawable>> {
+pub fn visit_simple(
+    simple: &asciimath_parser::tree::Simple,
+    omit_braces: bool,
+) -> Option<Box<dyn Drawable>> {
     match simple {
         asciimath_parser::tree::Simple::Missing => None,
         asciimath_parser::tree::Simple::Number(number) => Some(Box::new(Literal::new(number))),
@@ -208,29 +229,46 @@ pub fn visit_simple(simple: &asciimath_parser::tree::Simple) -> Option<Box<dyn D
             },
         ))),
         asciimath_parser::tree::Simple::Unary(unary) => match unary.op {
-            "sqrt" => Some(Box::new(Sqrt::new(visit_simple(unary.arg()).unwrap()))),
+            "sqrt" => Some(Box::new(Sqrt::new(
+                visit_simple(unary.arg(), false).unwrap(),
+            ))),
             _ => unimplemented!(), //TODO: implementation and test for all unary functions
         },
         asciimath_parser::tree::Simple::Func(func) => None,
         asciimath_parser::tree::Simple::Binary(binary) => {
             match binary.op {
                 "frac" => Some(Box::new(Div::new(
-                    visit_simple(&binary.first()).unwrap(),
-                    visit_simple(&binary.second()).unwrap(),
+                    visit_simple(&binary.first(), true).unwrap(),
+                    visit_simple(&binary.second(), true).unwrap(),
                 ))),
                 "stackrel" => Some(Box::new(Stack::new(
-                    visit_simple(&binary.first()).unwrap(),
-                    visit_simple(&binary.second()).unwrap(),
+                    visit_simple(&binary.first(), true).unwrap(),
+                    visit_simple(&binary.second(), true).unwrap(),
                 ))),
                 "root" => Some(Box::new(Root::new(
-                    visit_simple(&binary.first()).unwrap(),
-                    visit_simple(&binary.second()).unwrap(),
+                    visit_simple(&binary.first(), true).unwrap(),
+                    visit_simple(&binary.second(), true).unwrap(),
                 ))),
 
                 _ => unimplemented!(), //TODO: implementation and test for all binary functions
             }
         }
-        asciimath_parser::tree::Simple::Group(group) => None,
+        asciimath_parser::tree::Simple::Group(group) => {
+            let rendered_expr = visit_expr(&group.expr); //can be empoty, ie. "f()"
+            Some(Box::new(Group::new(
+                if omit_braces {
+                    BracketType::None
+                } else {
+                    bracket_type(group.left_bracket)
+                },
+                rendered_expr,
+                if omit_braces {
+                    BracketType::None
+                } else {
+                    bracket_type(group.right_bracket)
+                },
+            )))
+        }
         asciimath_parser::tree::Simple::Matrix(matrix) => None,
     }
 }
@@ -238,21 +276,20 @@ pub fn visit_simple(simple: &asciimath_parser::tree::Simple) -> Option<Box<dyn D
 pub fn visit_simple_script(
     simple_script: &asciimath_parser::tree::SimpleScript,
 ) -> Option<Box<dyn Drawable>> {
-    //TODO: handle script
-    if let Some(expr) = visit_simple(&simple_script.simple) {
+    if let Some(expr) = visit_simple(&simple_script.simple, false) {
         match &simple_script.script {
             asciimath_parser::tree::Script::None => Some(expr),
             asciimath_parser::tree::Script::Sub(simple) => {
-                let sub_expr = visit_simple(&simple).unwrap();
+                let sub_expr = visit_simple(&simple, false).unwrap();
                 Some(Box::new(ScriptExpr::new(expr, Some(sub_expr), None)))
             }
             asciimath_parser::tree::Script::Super(simple) => {
-                let sup_expr = visit_simple(&simple).unwrap();
+                let sup_expr = visit_simple(&simple, false).unwrap();
                 Some(Box::new(ScriptExpr::new(expr, None, Some(sup_expr))))
             }
             asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
-                let sub_expr = visit_simple(&simple1).unwrap();
-                let sup_expr = visit_simple(&simple2).unwrap();
+                let sub_expr = visit_simple(&simple1, false).unwrap();
+                let sup_expr = visit_simple(&simple2, false).unwrap();
                 Some(Box::new(ScriptExpr::new(
                     expr,
                     Some(sub_expr),
@@ -261,13 +298,33 @@ pub fn visit_simple_script(
             }
         }
     } else {
-        //visit_script(&simple_script.script, drawables);
         None
     }
 }
 
 pub fn visit_func(script_func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawable>> {
-    //func, script, arg
+    /*let arg = visit_simple(script_func.arg);
+
+    match &simple_script.script {
+         asciimath_parser::tree::Script::None => Some(expr),
+         asciimath_parser::tree::Script::Sub(simple) => {
+             let sub_expr = visit_simple(&simple).unwrap();
+             Some(Box::new(ScriptExpr::new(expr, Some(sub_expr), None)))
+         }
+         asciimath_parser::tree::Script::Super(simple) => {
+             let sup_expr = visit_simple(&simple).unwrap();
+             Some(Box::new(ScriptExpr::new(expr, None, Some(sup_expr))))
+         }
+         asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
+             let sub_expr = visit_simple(&simple1).unwrap();
+             let sup_expr = visit_simple(&simple2).unwrap();
+             Some(Box::new(ScriptExpr::new(
+                 expr,
+                 Some(sub_expr),
+                 Some(sup_expr),
+             )))
+         }
+     }*/
     None
 }
 
@@ -312,7 +369,6 @@ pub fn render(expr: &str) -> String {
     //oddly, it doesn't return result, always parsing as something
     let parsed = asciimath_parser::parse(&expr);
     println!("{:#?}", parsed);
-    let mut drawables: Vec<Box<dyn Drawable>> = vec![];
     let expr_opt = visit_expr(&parsed);
 
     if let Some(expr) = expr_opt {
