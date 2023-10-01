@@ -302,30 +302,31 @@ pub fn visit_simple_script(
     }
 }
 
-pub fn visit_func(script_func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawable>> {
-    /*let arg = visit_simple(script_func.arg);
+pub fn visit_func(func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawable>> {
+    let arg = visit_script_func(func.arg());
+    let func_lit = Box::new(Literal::new(func.func));
 
-    match &simple_script.script {
-         asciimath_parser::tree::Script::None => Some(expr),
+    let func_expr: Option<Box<dyn Drawable>> = match &func.script {
+         asciimath_parser::tree::Script::None => Some(func_lit),
          asciimath_parser::tree::Script::Sub(simple) => {
-             let sub_expr = visit_simple(&simple).unwrap();
-             Some(Box::new(ScriptExpr::new(expr, Some(sub_expr), None)))
-         }
+             let sub_expr = visit_simple(&simple, false).unwrap();
+             Some(Box::new(ScriptExpr::new(func_lit, Some(sub_expr), None)))
+         } 
          asciimath_parser::tree::Script::Super(simple) => {
-             let sup_expr = visit_simple(&simple).unwrap();
-             Some(Box::new(ScriptExpr::new(expr, None, Some(sup_expr))))
+             let sup_expr = visit_simple(&simple, false).unwrap();
+             Some(Box::new(ScriptExpr::new(func_lit, None, Some(sup_expr))))
          }
          asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
-             let sub_expr = visit_simple(&simple1).unwrap();
-             let sup_expr = visit_simple(&simple2).unwrap();
+             let sub_expr = visit_simple(&simple1, false).unwrap();
+             let sup_expr = visit_simple(&simple2, false).unwrap();
              Some(Box::new(ScriptExpr::new(
-                 expr,
+                 func_lit,
                  Some(sub_expr),
                  Some(sup_expr),
              )))
          }
-     }*/
-    None
+     };
+    Some(Box::new(Expr::new(vec![func_expr.unwrap(), arg.unwrap()])))
 }
 
 pub fn visit_script_func(
@@ -335,7 +336,7 @@ pub fn visit_script_func(
         asciimath_parser::tree::ScriptFunc::Simple(simple_script) => {
             visit_simple_script(&simple_script)
         }
-        asciimath_parser::tree::ScriptFunc::Func(func) => visit_func(&func),
+        asciimath_parser::tree::ScriptFunc::Func(func) => visit_func(func),
     }
 }
 

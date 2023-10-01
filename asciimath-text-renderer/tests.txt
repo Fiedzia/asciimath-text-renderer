@@ -33,4 +33,52 @@ root a b
  y
 2 
  x
+## brackets - round
+(x)
+(x)
+## brackets - round height 2
+(stackrel x 2)
+⎛x⎞
+⎝2⎠
+## brackets - round height 3
+(stackrel a (stackrel b c))
+⎛a⎞
+⎜b⎜
+⎝c⎠
+## brackets - square
+[x]
+[x]
+## brackets - square height 2
+[stackrel x 2]
+⎡x⎤
+⎣2⎦
+## brackets - square height 3
+[stackrel a (stackrel b c)]
+⎡a⎤
+⎥b⎥
+⎣c⎦
+## brackets - curly
+{x}
+{x}
+## brackets - curly height 2
+{stackrel x 2}
+⎰x⎱
+⎱2⎰
+## brackets - curly height 3
+{stackrel a (stackrel b c)}
+⎧a⎫
+⎨b⎬
+⎩c⎭
+## brackets - angled
+<<x>>
+⟨x⟩
+## brackets - angled height 2
+<<stackrel x 2>>
+╱x╲
+╲2╱
+## brackets - angled height 3
+<<stackrel a (stackrel b c)>>
+ ╱a╲ 
+🮤 b🮥 
+ ╲c╱ 
 # end of file
