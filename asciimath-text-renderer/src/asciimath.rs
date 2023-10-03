@@ -275,8 +275,9 @@ pub fn visit_simple(
 
 pub fn visit_simple_script(
     simple_script: &asciimath_parser::tree::SimpleScript,
+    omit_braces: bool,
 ) -> Option<Box<dyn Drawable>> {
-    if let Some(expr) = visit_simple(&simple_script.simple, false) {
+    if let Some(expr) = visit_simple(&simple_script.simple, omit_braces) {
         match &simple_script.script {
             asciimath_parser::tree::Script::None => Some(expr),
             asciimath_parser::tree::Script::Sub(simple) => {
@@ -303,13 +304,13 @@ pub fn visit_simple_script(
 }
 
 pub fn visit_func(func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawable>> {
-    let arg = visit_script_func(func.arg());
+    let arg = visit_script_func(func.arg(), false);
     let func_lit = Box::new(Literal::new(func.func));
 
     let func_expr: Option<Box<dyn Drawable>> = match &func.script {
         asciimath_parser::tree::Script::None => Some(func_lit),
         asciimath_parser::tree::Script::Sub(simple) => {
-            let sub_expr = visit_simple(&simple, false).unwrap();
+            let sub_expr = visit_simple(&simple, true).unwrap();
             Some(Box::new(ScriptExpr::new(func_lit, Some(sub_expr), None)))
         }
         asciimath_parser::tree::Script::Super(simple) => {
@@ -331,10 +332,11 @@ pub fn visit_func(func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawabl
 
 pub fn visit_script_func(
     script_func: &asciimath_parser::tree::ScriptFunc,
+    omit_braces: bool,
 ) -> Option<Box<dyn Drawable>> {
     match script_func {
         asciimath_parser::tree::ScriptFunc::Simple(simple_script) => {
-            visit_simple_script(&simple_script)
+            visit_simple_script(&simple_script, omit_braces)
         }
         asciimath_parser::tree::ScriptFunc::Func(func) => visit_func(func),
     }
@@ -342,8 +344,8 @@ pub fn visit_script_func(
 
 pub fn visit_fraction(fraction: &asciimath_parser::tree::Frac) -> Option<Box<dyn Drawable>> {
     Some(Box::new(Div::new(
-        visit_script_func(&fraction.numer).unwrap(),
-        visit_script_func(&fraction.denom).unwrap(),
+        visit_script_func(&fraction.numer, true).unwrap(),
+        visit_script_func(&fraction.denom, true).unwrap(),
     )))
 }
 
@@ -352,7 +354,7 @@ pub fn visit_expr(expr: &asciimath_parser::tree::Expression) -> Option<Box<dyn D
     for e in expr.iter() {
         match e {
             asciimath_parser::tree::Intermediate::ScriptFunc(script_func) => {
-                if let Some(_e) = visit_script_func(&script_func) {
+                if let Some(_e) = visit_script_func(&script_func, false) {
                     r_expr.exprs.push(_e)
                 }
             }
@@ -372,6 +374,7 @@ pub fn render(expr: &str) -> String {
     println!("{:#?}", parsed);
     let expr_opt = visit_expr(&parsed);
 
+    println!("{:#?}", expr_opt);
     if let Some(expr) = expr_opt {
         expr.to_string()
     } else {
