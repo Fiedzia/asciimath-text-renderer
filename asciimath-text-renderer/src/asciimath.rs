@@ -195,6 +195,13 @@ static SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
 
 };
 
+//ident substitutions - mostly to add some spacing
+static IDENTS: phf::Map<&'static str, &'static str> = phf_map! {
+    //"+" => " + ",
+    //"-" => " - ",
+    //"=" => " = ",
+};
+
 pub fn bracket_type(bracket: &str) -> BracketType {
     match bracket {
         "(" => BracketType::LeftRound,
@@ -220,7 +227,13 @@ pub fn visit_simple(
         asciimath_parser::tree::Simple::Missing => None,
         asciimath_parser::tree::Simple::Number(number) => Some(Box::new(Literal::new(number))),
         asciimath_parser::tree::Simple::Text(text) => Some(Box::new(Literal::new(text))),
-        asciimath_parser::tree::Simple::Ident(ident) => Some(Box::new(Literal::new(ident))),
+        asciimath_parser::tree::Simple::Ident(ident) => {
+            Some(Box::new(Literal::new(if let Some(s) = IDENTS.get(ident) {
+                s
+            } else {
+                ident
+            })))
+        }
         asciimath_parser::tree::Simple::Symbol(symbol) => Some(Box::new(Literal::new(
             if let Some(s) = SYMBOLS.get(symbol) {
                 s

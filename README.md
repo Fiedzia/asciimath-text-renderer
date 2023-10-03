@@ -6,6 +6,16 @@ This is work in progress, several important parts of spec are not supported yet.
 
 Examples:
 
+> The Discrete Fourier Transform is defined as 
+> X^k=1/N sum_(n=0)^(N-1)x_n * e^(-ik (2pi)/N n) = 1/N sum_(n=0)^(N-1)x_n[cos(k (2pi)/N n) -i sin(k (2pi)/N n)]
+```
+                  2π                                      
+              -ik────n                                    
+ k  1  N-1         N    1  N-1  ⎡   ⎛  2π  ⎞     ⎛  2π  ⎞⎤
+X =───∑   x ⋅e        =───∑   x ⎥cos⎜k────n⎜-isin⎜k────n⎜⎥
+    N  n=0 n            N  n=0 n⎣   ⎝   N  ⎠     ⎝   N  ⎠⎦
+```
+
 > f(x)=sqrt x + 1/2x^2
 ```
         ▁  1  2
