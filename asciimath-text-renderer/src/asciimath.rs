@@ -280,16 +280,16 @@ pub fn visit_simple_script(
         match &simple_script.script {
             asciimath_parser::tree::Script::None => Some(expr),
             asciimath_parser::tree::Script::Sub(simple) => {
-                let sub_expr = visit_simple(&simple, false).unwrap();
+                let sub_expr = visit_simple(&simple, true).unwrap();
                 Some(Box::new(ScriptExpr::new(expr, Some(sub_expr), None)))
             }
             asciimath_parser::tree::Script::Super(simple) => {
-                let sup_expr = visit_simple(&simple, false).unwrap();
+                let sup_expr = visit_simple(&simple, true).unwrap();
                 Some(Box::new(ScriptExpr::new(expr, None, Some(sup_expr))))
             }
             asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
-                let sub_expr = visit_simple(&simple1, false).unwrap();
-                let sup_expr = visit_simple(&simple2, false).unwrap();
+                let sub_expr = visit_simple(&simple1, true).unwrap();
+                let sup_expr = visit_simple(&simple2, true).unwrap();
                 Some(Box::new(ScriptExpr::new(
                     expr,
                     Some(sub_expr),
@@ -313,7 +313,7 @@ pub fn visit_func(func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawabl
             Some(Box::new(ScriptExpr::new(func_lit, Some(sub_expr), None)))
         }
         asciimath_parser::tree::Script::Super(simple) => {
-            let sup_expr = visit_simple(&simple, false).unwrap();
+            let sup_expr = visit_simple(&simple, true).unwrap();
             Some(Box::new(ScriptExpr::new(func_lit, None, Some(sup_expr))))
         }
         asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
