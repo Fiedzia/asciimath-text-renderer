@@ -307,25 +307,25 @@ pub fn visit_func(func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawabl
     let func_lit = Box::new(Literal::new(func.func));
 
     let func_expr: Option<Box<dyn Drawable>> = match &func.script {
-         asciimath_parser::tree::Script::None => Some(func_lit),
-         asciimath_parser::tree::Script::Sub(simple) => {
-             let sub_expr = visit_simple(&simple, false).unwrap();
-             Some(Box::new(ScriptExpr::new(func_lit, Some(sub_expr), None)))
-         } 
-         asciimath_parser::tree::Script::Super(simple) => {
-             let sup_expr = visit_simple(&simple, false).unwrap();
-             Some(Box::new(ScriptExpr::new(func_lit, None, Some(sup_expr))))
-         }
-         asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
-             let sub_expr = visit_simple(&simple1, false).unwrap();
-             let sup_expr = visit_simple(&simple2, false).unwrap();
-             Some(Box::new(ScriptExpr::new(
-                 func_lit,
-                 Some(sub_expr),
-                 Some(sup_expr),
-             )))
-         }
-     };
+        asciimath_parser::tree::Script::None => Some(func_lit),
+        asciimath_parser::tree::Script::Sub(simple) => {
+            let sub_expr = visit_simple(&simple, false).unwrap();
+            Some(Box::new(ScriptExpr::new(func_lit, Some(sub_expr), None)))
+        }
+        asciimath_parser::tree::Script::Super(simple) => {
+            let sup_expr = visit_simple(&simple, false).unwrap();
+            Some(Box::new(ScriptExpr::new(func_lit, None, Some(sup_expr))))
+        }
+        asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
+            let sub_expr = visit_simple(&simple1, false).unwrap();
+            let sup_expr = visit_simple(&simple2, false).unwrap();
+            Some(Box::new(ScriptExpr::new(
+                func_lit,
+                Some(sub_expr),
+                Some(sup_expr),
+            )))
+        }
+    };
     Some(Box::new(Expr::new(vec![func_expr.unwrap(), arg.unwrap()])))
 }
 

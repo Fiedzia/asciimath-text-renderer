@@ -100,14 +100,10 @@ impl Drawable for Div {
         let expr1_tc = self.expr1.to_canvas();
         let expr2_tc = self.expr2.to_canvas();
 
-        result.draw(
-            &expr1_tc,
-            ((self.width() - self.expr1.width()) as f64 / 2.0f64) as usize,
-            0,
-        );
+        result.draw(&expr1_tc, (self.width() - self.expr1.width() + 1) / 2, 0);
         result.draw(
             &expr2_tc,
-            ((self.width() - self.expr2.width()) as f64 / 2.0f64) as usize,
+            (self.width() - self.expr2.width() + 1) / 2,
             self.expr1.height() + 1,
         );
         for idx in 0..self.width() {
@@ -156,14 +152,10 @@ impl Drawable for Stack {
         let expr1_tc = self.expr1.to_canvas();
         let expr2_tc = self.expr2.to_canvas();
 
-        result.draw(
-            &expr1_tc,
-            ((self.width() - self.expr1.width()) as f64 / 2.0f64) as usize,
-            0,
-        );
+        result.draw(&expr1_tc, (self.width() - self.expr1.width() + 1) / 2, 0);
         result.draw(
             &expr2_tc,
-            ((self.width() - self.expr1.width()) as f64 / 2.0f64) as usize,
+            (self.width() - self.expr2.width() + 1) / 2,
             self.expr1.height(),
         );
         result
@@ -649,30 +641,41 @@ impl Drawable for Sqrt {
 }
 
 //root
+/*
+
+      ___
+     /  1
+   3/  ---
+  \/    4
+
+*/
 #[derive(Debug)]
 pub struct Root {
-    arg1: Box<dyn Drawable>,
-    arg2: Box<dyn Drawable>,
+    index: Box<dyn Drawable>,
+    radicand: Box<dyn Drawable>,
 }
 
 impl Root {
-    pub fn new(arg1: Box<dyn Drawable>, arg2: Box<dyn Drawable>) -> Self {
-        Root { arg1, arg2 }
+    pub fn new(index: Box<dyn Drawable>, radicand: Box<dyn Drawable>) -> Self {
+        Root { index, radicand }
     }
 }
 
 impl Drawable for Root {
     fn width(&self) -> usize {
-        //self.arg1.width() + self.expr.height() + ((self.expr.height() as f64 * 0.5 + 0.5) as usize)
-        ((self.arg1.width() + 1) / 2) * 2 + self.arg1.height() + (self.arg1.height() + 1) / 2 - 1
-            + self.arg2.width()
-            - 1
-        //TODO: account for arg2 wuth height larger than arg1
-        //self.arg1.width() + self.arg2.width()
+        let radical_symbol_height = (self.index.width() + 1) / 2;
+        radical_symbol_height * 2 +    //((index width + 1)/2)*2
+        if self.radicand.height() > radical_symbol_height { self.radicand.height() - radical_symbol_height } else { 0 }
+        //self.index.height() + (self.index.height() + 1) / 2 - 1
+        + self.radicand.width()
     }
 
     fn height(&self) -> usize {
-        self.arg1.height() + (self.arg1.width() + 1) / 2
+        let radical_symbol_height = (self.index.width() + 1) / 2;
+        std::cmp::max(
+            self.index.height() + radical_symbol_height,
+            self.radicand.height() + 1,
+        )
     }
 
     fn to_string(&self) -> String {
@@ -682,36 +685,49 @@ impl Drawable for Root {
     fn to_canvas(&self) -> TextCanvas {
         let mut result = TextCanvas::new(self.width(), self.height());
 
-        let arg1_tc = self.arg1.to_canvas();
-        let arg2_tc = self.arg2.to_canvas();
+        let index_tc = self.index.to_canvas();
+        let radicand_tc = self.radicand.to_canvas();
 
-        result.draw(&arg1_tc, arg1_tc.width % 2, 0);
+        let radical_symbol_height = (self.index.width() + 1) / 2;
+        result.draw(
+            &index_tc,
+            self.index.width() % 2,
+            self.height() - self.index.height() - radical_symbol_height,
+        );
 
         let mut x_idx = 0;
-        let box_h_2 = (self.arg1.height() + 1) / 2;
-        let box_w_2 = (self.arg1.width() + 1) / 2;
-        for i in 0..box_w_2 {
-            result.set(i, arg1_tc.height + i, "╲");
+
+        for i in 0..radical_symbol_height {
+            result.set(i, self.height() - radical_symbol_height + i, "╲");
             x_idx += 1;
         }
-        for i in 0..box_w_2 {
+        for i in 0..radical_symbol_height {
             result.set(x_idx, self.height() - i - 1, "╱");
             x_idx += 1;
         }
-        let arg2_pos = x_idx;
-
-        for _ in 0..arg2_tc.width {
-            result.set(x_idx, box_h_2 - 1, "▁");
+        let mut top_line_level = self.height() - radical_symbol_height;
+        if self.radicand.height() > radical_symbol_height {
+            for i in 0..(self.radicand.height() - radical_symbol_height) {
+                result.set(x_idx, self.height() - radical_symbol_height - i - 1, "╱");
+                top_line_level = self.height() - radical_symbol_height - i - 1;
+                x_idx += 1;
+            }
+        }
+        for _ in 0..radicand_tc.width {
+            result.set(x_idx, top_line_level - 1, "▁");
             x_idx += 1;
         }
 
-        result.draw(&arg2_tc, arg2_pos, box_h_2);
-
+        result.draw(
+            &radicand_tc,
+            self.width() - self.radicand.width(),
+            (top_line_level) + (self.height() - top_line_level - self.radicand.height() + 1) / 2,
+        );
         result
     }
 
     fn level(&self) -> usize {
-        (self.arg1.height() + 1) / 2
+        self.height() - (self.index.height() + 1) / 2
     }
 }
 
