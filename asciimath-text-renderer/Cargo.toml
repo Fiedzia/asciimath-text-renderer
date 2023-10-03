@@ -2,7 +2,13 @@
 name = "asciimath-text-renderer"
 version = "0.1.0"
 edition = "2021"
-
+authors = ["Maciej Dziardziel <fiedzia@gmail.com>"]
+description = "Render asciimath in terminal"
+readme = "../README.md"
+homepage = "https://github.com/Fiedzia/asciimath-text-renderer/"
+repository = "https://github.com/Fiedzia/asciimath-text-renderer/"
+license = "MIT OR Apache-2.0"
+keywords = ["asciimath"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

@@ -247,7 +247,7 @@ pub fn visit_simple(
             ))),
             _ => unimplemented!(), //TODO: implementation and test for all unary functions
         },
-        asciimath_parser::tree::Simple::Func(func) => None,
+        asciimath_parser::tree::Simple::Func(_func) => None, //TODO: handle func
         asciimath_parser::tree::Simple::Binary(binary) => {
             match binary.op {
                 "frac" => Some(Box::new(Div::new(
@@ -282,7 +282,7 @@ pub fn visit_simple(
                 },
             )))
         }
-        asciimath_parser::tree::Simple::Matrix(matrix) => None,
+        asciimath_parser::tree::Simple::Matrix(_matrix) => None, //TODO: handle matrix
     }
 }
 
@@ -384,10 +384,10 @@ pub fn visit_expr(expr: &asciimath_parser::tree::Expression) -> Option<Box<dyn D
 pub fn render(expr: &str) -> String {
     //oddly, it doesn't return result, always parsing as something
     let parsed = asciimath_parser::parse(&expr);
-    println!("{:#?}", parsed);
+    //println!("{:#?}", parsed);
     let expr_opt = visit_expr(&parsed);
 
-    println!("{:#?}", expr_opt);
+    //println!("{:#?}", expr_opt);
     if let Some(expr) = expr_opt {
         expr.to_string()
     } else {

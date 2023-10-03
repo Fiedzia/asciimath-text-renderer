@@ -33,3 +33,15 @@ Limitations:
  - cancel cannot be implemented in general. It is possible to replace it with strike-through line for text
 literals ( cancel x -> x̶  or x̷ or x̸  ), there is no way to do it for expressions.
  - we don't control fonts, therefore fancy text effects are also impossible or very limited (they can be imitated for text literals)
+
+
+usage:
+```
+cargo add asciimath-text-renderer
+```
+if you downloaded source, you can run example:
+```
+cargo run --example render 'sqrt(2)'
+  ▁
+╲╱2
+```
