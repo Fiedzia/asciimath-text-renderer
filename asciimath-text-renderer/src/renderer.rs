@@ -53,10 +53,12 @@ impl Drawable for Literal {
     fn height(&self) -> usize {
         1
     }
+
     fn to_string(&self) -> String {
         self.value.join("")
     }
     fn to_canvas(&self) -> TextCanvas {
+        println!("tc len:{}", self.value.len());
         let mut tc = TextCanvas::new(self.value.len(), 1);
         for (idx, s) in self.value.iter().enumerate() {
             tc.set(idx, 0, s);
@@ -581,8 +583,8 @@ impl Drawable for ScriptExpr {
 
     fn level(&self) -> usize {
         match (&self.sub_expr, &self.sup_expr) {
-            (Some(e), Some(_)) | (Some(e), None) => e.height() + (self.expr.height() + 1) / 2,
-            (None, Some(_)) => (self.expr.height() + 1) / 2,
+            (Some(e), Some(_)) | (Some(e), None) => e.height() + self.expr.level(),
+            (None, Some(_)) => self.expr.level(),
             (None, None) => 0,
         }
     }
@@ -755,9 +757,14 @@ impl Drawable for Expr {
             let level = self.level();
             self.exprs
                 .iter()
-                .map(|e| level + e.height() - level)
+                .map(|e| {
+                    println!("xx {} {}", e.height(), e.level());
+                    let l = level + (e.height() - e.level() - 1);
+                    l
+                })
                 .max()
                 .unwrap()
+                + 1
         }
     }
 
@@ -766,10 +773,13 @@ impl Drawable for Expr {
     }
 
     fn to_canvas(&self) -> TextCanvas {
+        println!("aa {} {} ", self.width(), self.height());
         let mut result = TextCanvas::new(self.width(), self.height());
         let mut idx = 0;
         let level = self.level();
+        println!("hh={} l={}", self.height(), level);
         for expr in &self.exprs {
+            println!("l1={}", expr.level());
             result.draw(&expr.to_canvas(), idx, level - expr.level());
             idx += expr.width();
         }

@@ -22,7 +22,7 @@ pub struct TextCanvas {
 impl TextCanvas {
     pub fn new(width: usize, height: usize) -> Self {
         let mut data = Vec::with_capacity(width * height);
-        for _ in 0..width * height {
+        for _ in 0..(width * height) {
             data.push(" ".to_string())
         }
         TextCanvas {
