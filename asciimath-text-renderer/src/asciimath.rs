@@ -230,7 +230,7 @@ pub fn visit_simple(
         ))),
         asciimath_parser::tree::Simple::Unary(unary) => match unary.op {
             "sqrt" => Some(Box::new(Sqrt::new(
-                visit_simple(unary.arg(), false).unwrap(),
+                visit_simple(unary.arg(), true).unwrap(),
             ))),
             _ => unimplemented!(), //TODO: implementation and test for all unary functions
         },
