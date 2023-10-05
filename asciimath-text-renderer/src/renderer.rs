@@ -579,7 +579,7 @@ impl Matrix {
 
 impl Drawable for Matrix {
     fn width(&self) -> usize {
-        let num_rows = &self.exprs.len() / self.num_colls;
+        let _num_rows = &self.exprs.len() / self.num_colls;
         let max_sizes = self.max_sizes();
         1 + (0..self.num_colls)
             .map(|coll_idx| max_sizes[0][coll_idx].0)
@@ -886,7 +886,7 @@ impl Drawable for Expr {
     }
 
     fn height(&self) -> usize {
-        if self.exprs.len() == 0 {
+        if self.exprs.is_empty() {
             0
         } else {
             let level = self.level();
@@ -1003,28 +1003,26 @@ mod test {
         for line in read_to_string("tests.txt").unwrap().lines() {
             if line.starts_with("##") {
                 if mode == "example" {
-                    verify(&example_name, &example_asciimath, &example.join("\n"));
+                    verify(example_name, example_asciimath, &example.join("\n"));
                     example_name = "";
                     example.clear();
                 }
                 example_name = line[2..].trim();
                 mode = "example_asciimath";
-            } else if line.starts_with("#") || line == "" {
+            } else if line.starts_with('#') || line.is_empty() {
                 if mode == "example" {
-                    verify(&example_name, &example_asciimath, &example.join("\n"));
+                    verify(example_name, example_asciimath, &example.join("\n"));
                     example_name = "";
                     example.clear();
                 }
                 mode = ""
+            } else if mode == "example" {
+                example.push(line.to_string());
+            } else if mode == "example_asciimath" {
+                example_asciimath = line;
+                mode = "example"
             } else {
-                if mode == "example" {
-                    example.push(line.to_string());
-                } else if mode == "example_asciimath" {
-                    example_asciimath = line;
-                    mode = "example"
-                } else {
-                    panic!("invalid test file");
-                }
+                panic!("invalid test file");
             }
         }
     }

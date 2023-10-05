@@ -3,7 +3,7 @@ use phf::phf_map;
 use crate::renderer::{
     BracketType, Div, Drawable, Expr, Group, Literal, Matrix, Root, ScriptExpr, Sqrt, Stack,
 };
-use asciimath_parser;
+
 
 static SYMBOLS: phf::Map<&'static str, &'static str> = phf_map! {
     //symbols taken from https://github.com/asciimath/asciimathml/blob/master/ASCIIMathML.js
@@ -259,16 +259,16 @@ pub fn visit_simple(
         asciimath_parser::tree::Simple::Binary(binary) => {
             match binary.op {
                 "frac" => Some(Box::new(Div::new(
-                    visit_simple(&binary.first(), true).unwrap(),
-                    visit_simple(&binary.second(), true).unwrap(),
+                    visit_simple(binary.first(), true).unwrap(),
+                    visit_simple(binary.second(), true).unwrap(),
                 ))),
                 "stackrel" => Some(Box::new(Stack::new(
-                    visit_simple(&binary.first(), true).unwrap(),
-                    visit_simple(&binary.second(), true).unwrap(),
+                    visit_simple(binary.first(), true).unwrap(),
+                    visit_simple(binary.second(), true).unwrap(),
                 ))),
                 "root" => Some(Box::new(Root::new(
-                    visit_simple(&binary.first(), true).unwrap(),
-                    visit_simple(&binary.second(), true).unwrap(),
+                    visit_simple(binary.first(), true).unwrap(),
+                    visit_simple(binary.second(), true).unwrap(),
                 ))),
 
                 _ => unimplemented!(), //TODO: implementation and test for all binary functions
@@ -292,7 +292,7 @@ pub fn visit_simple(
         }
         asciimath_parser::tree::Simple::Matrix(matrix) => {
             let mut exprs: Vec<Box<dyn Drawable>> = vec![];
-            &matrix.rows().for_each(|row| {
+            matrix.rows().for_each(|row| {
                 for e in row {
                     exprs.push(visit_expr(e).unwrap());
                 }
@@ -315,16 +315,16 @@ pub fn visit_simple_script(
         match &simple_script.script {
             asciimath_parser::tree::Script::None => Some(expr),
             asciimath_parser::tree::Script::Sub(simple) => {
-                let sub_expr = visit_simple(&simple, true).unwrap();
+                let sub_expr = visit_simple(simple, true).unwrap();
                 Some(Box::new(ScriptExpr::new(expr, Some(sub_expr), None)))
             }
             asciimath_parser::tree::Script::Super(simple) => {
-                let sup_expr = visit_simple(&simple, true).unwrap();
+                let sup_expr = visit_simple(simple, true).unwrap();
                 Some(Box::new(ScriptExpr::new(expr, None, Some(sup_expr))))
             }
             asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
-                let sub_expr = visit_simple(&simple1, true).unwrap();
-                let sup_expr = visit_simple(&simple2, true).unwrap();
+                let sub_expr = visit_simple(simple1, true).unwrap();
+                let sup_expr = visit_simple(simple2, true).unwrap();
                 Some(Box::new(ScriptExpr::new(
                     expr,
                     Some(sub_expr),
@@ -344,16 +344,16 @@ pub fn visit_func(func: &asciimath_parser::tree::Func) -> Option<Box<dyn Drawabl
     let func_expr: Option<Box<dyn Drawable>> = match &func.script {
         asciimath_parser::tree::Script::None => Some(func_lit),
         asciimath_parser::tree::Script::Sub(simple) => {
-            let sub_expr = visit_simple(&simple, true).unwrap();
+            let sub_expr = visit_simple(simple, true).unwrap();
             Some(Box::new(ScriptExpr::new(func_lit, Some(sub_expr), None)))
         }
         asciimath_parser::tree::Script::Super(simple) => {
-            let sup_expr = visit_simple(&simple, true).unwrap();
+            let sup_expr = visit_simple(simple, true).unwrap();
             Some(Box::new(ScriptExpr::new(func_lit, None, Some(sup_expr))))
         }
         asciimath_parser::tree::Script::Subsuper(simple1, simple2) => {
-            let sub_expr = visit_simple(&simple1, false).unwrap();
-            let sup_expr = visit_simple(&simple2, false).unwrap();
+            let sub_expr = visit_simple(simple1, false).unwrap();
+            let sup_expr = visit_simple(simple2, false).unwrap();
             Some(Box::new(ScriptExpr::new(
                 func_lit,
                 Some(sub_expr),
@@ -370,7 +370,7 @@ pub fn visit_script_func(
 ) -> Option<Box<dyn Drawable>> {
     match script_func {
         asciimath_parser::tree::ScriptFunc::Simple(simple_script) => {
-            visit_simple_script(&simple_script, omit_braces)
+            visit_simple_script(simple_script, omit_braces)
         }
         asciimath_parser::tree::ScriptFunc::Func(func) => visit_func(func),
     }
@@ -388,12 +388,12 @@ pub fn visit_expr(expr: &asciimath_parser::tree::Expression) -> Option<Box<dyn D
     for e in expr.iter() {
         match e {
             asciimath_parser::tree::Intermediate::ScriptFunc(script_func) => {
-                if let Some(_e) = visit_script_func(&script_func, false) {
+                if let Some(_e) = visit_script_func(script_func, false) {
                     r_expr.exprs.push(_e)
                 }
             }
             asciimath_parser::tree::Intermediate::Frac(fraction) => {
-                if let Some(_e) = visit_fraction(&fraction) {
+                if let Some(_e) = visit_fraction(fraction) {
                     r_expr.exprs.push(_e)
                 }
             }
@@ -404,7 +404,7 @@ pub fn visit_expr(expr: &asciimath_parser::tree::Expression) -> Option<Box<dyn D
 
 pub fn render(expr: &str) -> String {
     //oddly, it doesn't return result, always parsing as something
-    let parsed = asciimath_parser::parse(&expr);
+    let parsed = asciimath_parser::parse(expr);
     //println!("{:#?}", parsed);
     let expr_opt = visit_expr(&parsed);
 
