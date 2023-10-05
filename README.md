@@ -73,9 +73,9 @@ cargo run --example render 'sqrt(2)'
 
 Similar projects:
 
-[simonschmidt/Asciimat](https://github.com/simonschmidt/Asciimath) Convert plain-text math to unicode (Python)
-[Nota](https://kary.us/nota/)[pouyakary/Nota](https://github.com/pouyakary/Nota) (Haskell)
-[Diagon](https://github.com/ArthurSonzogni/Diagon) Beside formulas, Diagon renders many types of diagrams. (C++)
+* [simonschmidt/Asciimat](https://github.com/simonschmidt/Asciimath) Convert plain-text math to unicode (Python)
+* [Nota](https://kary.us/nota/)[pouyakary/Nota](https://github.com/pouyakary/Nota) (Haskell)
+* [Diagon](https://github.com/ArthurSonzogni/Diagon) Beside formulas, Diagon renders many types of diagrams. (C++)
 
 
 
