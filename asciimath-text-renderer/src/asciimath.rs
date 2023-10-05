@@ -1,7 +1,7 @@
 use phf::phf_map;
 
 use crate::renderer::{
-    BracketType, Div, Drawable, Expr, Group, Literal, Root, ScriptExpr, Sqrt, Stack,
+    BracketType, Div, Drawable, Expr, Group, Literal, Matrix, Root, ScriptExpr, Sqrt, Stack,
 };
 use asciimath_parser;
 
@@ -214,6 +214,7 @@ pub fn bracket_type(bracket: &str) -> BracketType {
         ">>" | ":)" => BracketType::RightAngled,
         "{:" => BracketType::None,
         ":}" => BracketType::None,
+        "|" => BracketType::Vertical,
         _ => BracketType::None, //TODO: panic?
     }
 }
@@ -245,6 +246,13 @@ pub fn visit_simple(
             "sqrt" => Some(Box::new(Sqrt::new(
                 visit_simple(unary.arg(), true).unwrap(),
             ))),
+            "bar" => unimplemented!(),
+            "hat" => unimplemented!(),
+            "ul" => unimplemented!(),
+            "vec" => unimplemented!(),
+            "tilde" => unimplemented!(),
+            "dot" => unimplemented!(),
+            "ddot" => unimplemented!(),
             _ => unimplemented!(), //TODO: implementation and test for all unary functions
         },
         asciimath_parser::tree::Simple::Func(_func) => None, //TODO: handle func
@@ -282,7 +290,20 @@ pub fn visit_simple(
                 },
             )))
         }
-        asciimath_parser::tree::Simple::Matrix(_matrix) => None, //TODO: handle matrix
+        asciimath_parser::tree::Simple::Matrix(matrix) => {
+            let mut exprs: Vec<Box<dyn Drawable>> = vec![];
+            &matrix.rows().for_each(|row| {
+                for e in row {
+                    exprs.push(visit_expr(e).unwrap());
+                }
+            });
+            Some(Box::new(Matrix::new(
+                bracket_type(matrix.left_bracket),
+                exprs,
+                bracket_type(matrix.right_bracket),
+                matrix.num_cols(),
+            )))
+        } //TODO: handle matrix
     }
 }
 
@@ -389,7 +410,7 @@ pub fn render(expr: &str) -> String {
 
     //println!("{:#?}", expr_opt);
     if let Some(expr) = expr_opt {
-        expr.to_string()
+        expr.as_text()
     } else {
         "".to_string()
     }

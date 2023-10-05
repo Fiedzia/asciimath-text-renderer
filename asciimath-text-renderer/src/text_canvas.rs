@@ -49,7 +49,7 @@ impl TextCanvas {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn as_text(&self) -> String {
         let mut result: String = String::with_capacity(
             self.data.iter().map(|s| s.len()).sum::<usize>()
                 + (if self.height > 0 { self.height - 1 } else { 0 }),
@@ -75,15 +75,15 @@ mod test {
     #[test]
     fn test_text_canvas() {
         let mut tc = TextCanvas::new(1, 1);
-        assert_eq!(tc.to_string(), " ");
+        assert_eq!(tc.as_text(), " ");
         tc.set(0, 0, "a");
-        assert_eq!(tc.to_string(), "a");
+        assert_eq!(tc.as_text(), "a");
     }
 
     #[test]
-    fn test_text_canvas_to_string_with_newlines() {
+    fn test_text_canvas_as_text_with_newlines() {
         let tc = TextCanvas::new(1, 2);
-        assert_eq!(tc.to_string(), " \n ");
+        assert_eq!(tc.as_text(), " \n ");
     }
 
     #[test]
@@ -93,10 +93,10 @@ mod test {
         tc.set(1, 0, "b");
         tc.set(0, 1, "c");
         tc.set(1, 1, "d");
-        assert_eq!(tc.to_string(), "ab\ncd");
+        assert_eq!(tc.as_text(), "ab\ncd");
         let mut bigger_tc = TextCanvas::new(4, 4);
         bigger_tc.draw(&tc, 0, 0);
         const expected: &str = concat!("ab  \n", "cd  \n", "    \n", "    ");
-        assert_eq!(bigger_tc.to_string(), expected);
+        assert_eq!(bigger_tc.as_text(), expected);
     }
 }

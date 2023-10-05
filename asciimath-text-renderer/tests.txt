@@ -81,6 +81,15 @@ root a b
  ╱a╲ 
 🮤 b🮥 
  ╲c╱ 
+##  brackets - vertical height 1
+|a|
+￨a￨
+##  brackets - vertical height 3
+|a/2|
+￨ a ￨
+￨───￨
+￨ 2 ￨
+
 ## The Discrete Fourier Transform is defined as
 X^k=1/N sum_(n=0)^(N-1)x_n * e^(-ik (2pi)/N n) = 1/N sum_(n=0)^(N-1)x_n[cos(k (2pi)/N n) -i sin(k (2pi)/N n)]
                   2π                                      

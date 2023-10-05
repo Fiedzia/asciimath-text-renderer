@@ -3,6 +3,9 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::text_canvas::TextCanvas;
 
+//TODO: level for sqrt/root should match radicand level,
+// for example: 1 + sqrt (-1^4/2)   "1" is rendered to high
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum BracketType {
     None,
@@ -14,6 +17,7 @@ pub enum BracketType {
     RightCurly,  //"}"
     LeftAngled,  //"<"
     RightAngled, //">"
+    Vertical,    //"￨"
 }
 
 pub trait Drawable: Debug {
@@ -27,7 +31,7 @@ pub trait Drawable: Debug {
      2
     */
     fn level(&self) -> usize;
-    fn to_string(&self) -> String;
+    fn as_text(&self) -> String;
     fn to_canvas(&self) -> TextCanvas;
 }
 
@@ -54,7 +58,7 @@ impl Drawable for Literal {
         1
     }
 
-    fn to_string(&self) -> String {
+    fn as_text(&self) -> String {
         self.value.join("")
     }
     fn to_canvas(&self) -> TextCanvas {
@@ -91,8 +95,8 @@ impl Drawable for Div {
         self.expr1.height() + self.expr2.height() + 1
     }
 
-    fn to_string(&self) -> String {
-        self.to_canvas().to_string()
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
     }
 
     fn to_canvas(&self) -> TextCanvas {
@@ -143,8 +147,8 @@ impl Drawable for Stack {
         self.expr1.height() + self.expr2.height()
     }
 
-    fn to_string(&self) -> String {
-        self.to_canvas().to_string()
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
     }
 
     fn to_canvas(&self) -> TextCanvas {
@@ -181,6 +185,20 @@ pub fn bracket_width(bracket_type: &BracketType, expr_height: usize) -> usize {
         BracketType::LeftSquare | BracketType::RightSquare => 1,
         BracketType::LeftCurly | BracketType::RightCurly => 1,
         BracketType::LeftAngled | BracketType::RightAngled => (expr_height + 1) / 2,
+        BracketType::Vertical => 1,
+    }
+}
+
+pub fn draw_simple_bracket(
+    text_canvas: &mut TextCanvas,
+    expr_height: usize,
+    at_x: usize,
+    at_y: usize,
+    bracket: &str,
+) {
+    //expr_height >= 2
+    for y_idx in 0..expr_height {
+        text_canvas.set(at_x, at_y + y_idx, bracket);
     }
 }
 
@@ -371,6 +389,9 @@ pub fn draw_bracket(
         BracketType::RightAngled => {
             draw_long_angled_bracket_right(text_canvas, expr_height, at_x, at_y, "╲", "🮥", "╱");
         }
+        BracketType::Vertical => {
+            draw_simple_bracket(text_canvas, expr_height, at_x, at_y, "￨");
+        }
     }
 }
 
@@ -428,8 +449,8 @@ impl Drawable for Group {
         }
     }
 
-    fn to_string(&self) -> String {
-        self.to_canvas().to_string()
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
     }
 
     fn to_canvas(&self) -> TextCanvas {
@@ -498,11 +519,127 @@ impl Drawable for Group {
     }
 }
 
+//matrix -> render matrix
+//for example   ((a, b), (c, d))
+//              [[a,b], [c,d]]
+//TODO: support augmented matrices ((a,|),(b,|))
+//TODO: align elements to level and middle
+#[derive(Debug)]
+pub struct Matrix {
+    left_bracket: BracketType,
+    exprs: Vec<Box<dyn Drawable>>,
+    right_bracket: BracketType,
+    num_colls: usize,
+}
+
+impl Matrix {
+    pub fn new(
+        left_bracket: BracketType,
+        exprs: Vec<Box<dyn Drawable>>,
+        right_bracket: BracketType,
+        num_colls: usize,
+    ) -> Self {
+        Matrix {
+            left_bracket,
+            exprs,
+            right_bracket,
+            num_colls,
+        }
+    }
+
+    ///Gather max width per column and max height per row
+    ///for example:
+    ///[a*2, c] gives [ (3,1), (1,1)]
+    ///[b/2, d]       [ (3,3), (1,3)]
+    pub fn max_sizes(&self) -> Vec<Vec<(usize, usize)>> {
+        let num_rows = &self.exprs.len() / self.num_colls;
+        let mut data = vec![vec![(0, 0); self.num_colls]; num_rows];
+
+        for row_idx in 0..num_rows {
+            let max_row_height = (0..self.num_colls)
+                .map(|coll_idx| self.exprs[row_idx * self.num_colls + coll_idx].height())
+                .max()
+                .unwrap();
+            for coll_idx in 0..self.num_colls {
+                data[row_idx][coll_idx].1 = max_row_height;
+            }
+        }
+        for coll_idx in 0..self.num_colls {
+            let max_col_width = (0..num_rows)
+                .map(|row_idx| self.exprs[row_idx * self.num_colls + coll_idx].width())
+                .max()
+                .unwrap();
+            for row_idx in 0..num_rows {
+                data[row_idx][coll_idx].0 = max_col_width;
+            }
+        }
+        data
+    }
+}
+
+impl Drawable for Matrix {
+    fn width(&self) -> usize {
+        let num_rows = &self.exprs.len() / self.num_colls;
+        let max_sizes = self.max_sizes();
+        1 + (0..self.num_colls)
+            .map(|coll_idx| max_sizes[0][coll_idx].0)
+            .sum::<usize>()
+            + (self.num_colls - 1)
+            + 1
+    }
+
+    fn height(&self) -> usize {
+        let num_rows = &self.exprs.len() / self.num_colls;
+        let max_sizes = self.max_sizes();
+        (0..num_rows)
+            .map(|row_idx| max_sizes[row_idx][0].1)
+            .sum::<usize>()
+            + (num_rows - 1)
+    }
+
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
+    }
+
+    fn to_canvas(&self) -> TextCanvas {
+        let num_rows = &self.exprs.len() / self.num_colls;
+        let max_sizes = self.max_sizes();
+        println!("sizes: {:?}", max_sizes);
+        let mut result = TextCanvas::new(self.width(), self.height());
+        draw_bracket(&mut result, &self.left_bracket, self.height(), 0, 0);
+        let mut y = 0;
+        for row_idx in 0..num_rows {
+            let mut x = 1;
+            let mut max_row_height = 0;
+            for coll_idx in 0..self.num_colls {
+                let tc = self.exprs[row_idx * self.num_colls + coll_idx].to_canvas();
+                result.draw(&tc, x + (max_sizes[row_idx][coll_idx].0 - tc.width) / 2, y);
+                x += max_sizes[row_idx][coll_idx].0 + 1;
+                if tc.height > max_row_height {
+                    max_row_height = tc.height
+                }
+            }
+            y += max_row_height + 1;
+        }
+        draw_bracket(
+            &mut result,
+            &self.right_bracket,
+            self.height(),
+            self.width() - 1,
+            0,
+        );
+        result
+    }
+
+    fn level(&self) -> usize {
+        0
+    }
+}
+
 //script -> render expression with sub or super script (or both)
-//for example    3   x          2
-//              2     0        x
-//                              1
-//
+//for example  3  x_0: x             2
+//       2^3: 2         0   x_2^2:  x
+//                                   1
 #[derive(Debug)]
 pub struct ScriptExpr {
     expr: Box<dyn Drawable>,
@@ -545,8 +682,8 @@ impl Drawable for ScriptExpr {
             }
     }
 
-    fn to_string(&self) -> String {
-        self.to_canvas().to_string()
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
     }
 
     fn to_canvas(&self) -> TextCanvas {
@@ -609,8 +746,8 @@ impl Drawable for Sqrt {
         self.expr.height() + 1
     }
 
-    fn to_string(&self) -> String {
-        self.to_canvas().to_string()
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
     }
 
     fn to_canvas(&self) -> TextCanvas {
@@ -678,8 +815,8 @@ impl Drawable for Root {
         )
     }
 
-    fn to_string(&self) -> String {
-        self.to_canvas().to_string()
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
     }
 
     fn to_canvas(&self) -> TextCanvas {
@@ -762,8 +899,8 @@ impl Drawable for Expr {
         }
     }
 
-    fn to_string(&self) -> String {
-        self.to_canvas().to_string()
+    fn as_text(&self) -> String {
+        self.to_canvas().as_text()
     }
 
     fn to_canvas(&self) -> TextCanvas {
@@ -795,7 +932,7 @@ mod test {
         let l = Literal::new("abc");
         assert_eq!(l.width(), 3);
         assert_eq!(l.height(), 1);
-        assert_eq!(&l.to_string(), "abc");
+        assert_eq!(&l.as_text(), "abc");
     }
 
     #[test]
@@ -806,7 +943,7 @@ mod test {
 
         assert_eq!(div.width(), 3);
         assert_eq!(div.height(), 3);
-        assert_eq!(&div.to_string(), " 1 \n───\n 2 ");
+        assert_eq!(&div.as_text(), " 1 \n───\n 2 ");
     }
 
     #[test]
@@ -817,7 +954,7 @@ mod test {
 
         assert_eq!(stack.width(), 1);
         assert_eq!(stack.height(), 2);
-        assert_eq!(&stack.to_string(), "1\n2");
+        assert_eq!(&stack.as_text(), "1\n2");
     }
 
     #[test]
@@ -827,26 +964,26 @@ mod test {
 
         assert_eq!(sqrt.width(), 3);
         assert_eq!(sqrt.height(), 2);
-        assert_eq!(&sqrt.to_string(), "  ▁\n╲╱1");
+        assert_eq!(&sqrt.as_text(), "  ▁\n╲╱1");
 
         let l2 = Literal::new("2");
         let div = Div::new(Box::new(l1.clone()), Box::new(l2.clone()));
         let sqrt = Sqrt::new(Box::new(div));
         assert_eq!(sqrt.width(), 8);
         assert_eq!(sqrt.height(), 4);
-        assert_eq!(&sqrt.to_string(), "     ▁▁▁\n    ╱ 1 \n╲  ╱ ───\n ╲╱   2 ");
+        assert_eq!(&sqrt.as_text(), "     ▁▁▁\n    ╱ 1 \n╲  ╱ ───\n ╲╱   2 ");
     }
 
     #[test]
     fn test_expression() {
         let expr = Expr::new(vec![]);
-        assert_eq!(&expr.to_string(), "");
+        assert_eq!(&expr.as_text(), "");
         let l1 = Literal::new("a");
         let expr = Expr::new(vec![Box::new(l1.clone())]);
-        assert_eq!(&expr.to_string(), "a");
+        assert_eq!(&expr.as_text(), "a");
         let l2 = Literal::new("b");
         let expr = Expr::new(vec![Box::new(l1), Box::new(l2)]);
-        assert_eq!(&expr.to_string(), "ab");
+        assert_eq!(&expr.as_text(), "ab");
     }
 
     #[test]
