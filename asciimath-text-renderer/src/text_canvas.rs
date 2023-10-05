@@ -96,7 +96,7 @@ mod test {
         assert_eq!(tc.as_text(), "ab\ncd");
         let mut bigger_tc = TextCanvas::new(4, 4);
         bigger_tc.draw(&tc, 0, 0);
-        const expected: &str = concat!("ab  \n", "cd  \n", "    \n", "    ");
-        assert_eq!(bigger_tc.as_text(), expected);
+        const EXPECTED: &str = concat!("ab  \n", "cd  \n", "    \n", "    ");
+        assert_eq!(bigger_tc.as_text(), EXPECTED);
     }
 }

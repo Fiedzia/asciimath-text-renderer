@@ -1004,7 +1004,6 @@ mod test {
             if line.starts_with("##") {
                 if mode == "example" {
                     verify(example_name, example_asciimath, &example.join("\n"));
-                    example_name = "";
                     example.clear();
                 }
                 example_name = line[2..].trim();
