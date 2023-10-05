@@ -552,7 +552,7 @@ impl Matrix {
     ///[a*2, c] gives [ (3,1), (1,1)]
     ///[b/2, d]       [ (3,3), (1,3)]
     pub fn max_sizes(&self) -> Vec<Vec<(usize, usize)>> {
-        let num_rows = &self.exprs.len() / self.num_colls;
+        let num_rows = self.exprs.len() / self.num_colls;
         let mut data = vec![vec![(0, 0); self.num_colls]; num_rows];
 
         for row_idx in 0..num_rows {
@@ -579,7 +579,7 @@ impl Matrix {
 
 impl Drawable for Matrix {
     fn width(&self) -> usize {
-        let _num_rows = &self.exprs.len() / self.num_colls;
+        let _num_rows = self.exprs.len() / self.num_colls;
         let max_sizes = self.max_sizes();
         1 + (0..self.num_colls)
             .map(|coll_idx| max_sizes[0][coll_idx].0)
@@ -589,7 +589,7 @@ impl Drawable for Matrix {
     }
 
     fn height(&self) -> usize {
-        let num_rows = &self.exprs.len() / self.num_colls;
+        let num_rows = self.exprs.len() / self.num_colls;
         let max_sizes = self.max_sizes();
         (0..num_rows)
             .map(|row_idx| max_sizes[row_idx][0].1)
@@ -602,7 +602,7 @@ impl Drawable for Matrix {
     }
 
     fn to_canvas(&self) -> TextCanvas {
-        let num_rows = &self.exprs.len() / self.num_colls;
+        let num_rows = self.exprs.len() / self.num_colls;
         let max_sizes = self.max_sizes();
         println!("sizes: {:?}", max_sizes);
         let mut result = TextCanvas::new(self.width(), self.height());
